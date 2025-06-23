@@ -56,7 +56,6 @@
     background-image: url('монстр-Photoroom.png');
     width: 70px; height: 70px; bottom: 50px;
     transition: left 0.05s linear;
-    /* Убираем display:none, чтобы монстр был виден сразу */
   }
   .obstacle {
     width: 40px; height: 50px; background: #f06595; border-radius: 15px;
@@ -156,6 +155,9 @@
   let speedBoostActive = false;
   let speedBoostTimeout = null;
 
+  let slowEffectActive = false;
+  let slowEffectTimeout = null;
+
   let bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
 
   // Создаём выбор персонажа
@@ -183,7 +185,9 @@
     score = 0;
     level = 1;
     speedBoostActive = false;
+    slowEffectActive = false;
     clearTimeout(speedBoostTimeout);
+    clearTimeout(slowEffectTimeout);
     updateScore();
     updateLevel();
     gameOver = false;
@@ -251,7 +255,7 @@
     monster.style.left = monsterLeft + 'px';
 
     obstacles.forEach((ob, i) => {
-      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
+      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0) - (slowEffectActive ? 3 : 0);
       if (ob.left < -40) {
         if (ob.element.parentNode) gameContainer.removeChild(ob.element);
         obstacles.splice(i, 1);
@@ -271,10 +275,20 @@
       }
     }
     if (isCollision(player, monster)) {
-      console.log('Столкновение с монстром');
-      endGame();
-      return;
+      if (!slowEffectActive) {
+        console.log('Монстр коснулся — замедление');
+        activateSlowEffect();
+      }
     }
+  }
+
+  function activateSlowEffect() {
+    slowEffectActive = true;
+    updateInstructions('Монстр коснулся! Скорость препятствий снижена на 5 секунд.');
+    slowEffectTimeout = setTimeout(() => {
+      slowEffectActive = false;
+      updateInstructions('Скорость восстановлена.');
+    }, 5000);
   }
 
   function endGame() {
@@ -285,7 +299,9 @@
     clearInterval(obstacleInterval);
     clearTimeout(obstacleStartTimeout);
     clearTimeout(speedBoostTimeout);
+    clearTimeout(slowEffectTimeout);
     speedBoostActive = false;
+    slowEffectActive = false;
     hitSound.currentTime = 0;
     hitSound.play().catch(() => {});
     bgMusic.pause();
@@ -397,6 +413,7 @@
     clearInterval(obstacleInterval);
     clearTimeout(obstacleStartTimeout);
     clearTimeout(speedBoostTimeout);
+    clearTimeout(slowEffectTimeout);
     obstacles.forEach(ob => {
       if (ob.element.parentNode) ob.element.parentNode.removeChild(ob.element);
     });
@@ -408,7 +425,6 @@
     gameOver = false;
     playerBottom = 50;
     player.style.bottom = playerBottom + 'px';
-    // Не скрываем монстра при рестарте, чтобы он был виден
     monster.style.display = 'block';
   };
 

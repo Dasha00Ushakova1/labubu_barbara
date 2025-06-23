@@ -30,7 +30,7 @@
     box-shadow: 0 0 15px #f06595;
   }
   .charCard img {
-    width: 100%; border-radius: 20px;
+    width: 100%; height: 120px; object-fit: contain; border-radius: 20px;
     filter: drop-shadow(1px 1px 1px #f9c0c0);
   }
   #gameContainer {
@@ -47,9 +47,13 @@
     background-size: contain; background-repeat: no-repeat; background-position: center;
     transition: bottom 0.1s ease-out;
   }
+  #player {
+    width: 60px; height: 120px; /* увеличим высоту для прыжка */
+  }
   #monster {
-    background-image: url('https://i.imgur.com/2z5Jq6Y.png'); /* милый монстр Лабубу */
+    background-image: url('https://i.imgur.com/2z5Jq6Y.png');
     width: 70px; height: 70px; bottom: 50px;
+    transition: left 0.05s linear;
   }
   .obstacle {
     width: 40px; height: 50px; background: #f06595; border-radius: 15px;
@@ -71,12 +75,20 @@
   #restartBtn:hover {
     background: #d46a6a;
   }
+  #musicControl {
+    position: fixed; top: 10px; right: 10px; background: #f06595; border-radius: 50%;
+    width: 40px; height: 40px; cursor: pointer; box-shadow: 0 4px 10px #d46a6a;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #musicControl svg {
+    fill: white; width: 24px; height: 24px;
+  }
 </style>
 </head>
 <body>
 
 <h1>Игра Лабубу</h1>
-<div id="characterSelect"></div>
+<div id="characterSelect" role="list"></div>
 
 <div id="gameContainer" aria-label="Игровое поле">
   <div id="ground"></div>
@@ -87,8 +99,15 @@
 <div id="instructions">Нажмите пробел или кликните, чтобы Лабубу прыгнул</div>
 <button id="restartBtn" aria-label="Начать игру заново">Начать заново</button>
 
+<div id="musicControl" title="Включить/выключить музыку" aria-pressed="true" role="button" tabindex="0">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>
+</div>
+
+<audio id="bgMusic" loop src="https://cdn.pixabay.com/download/audio/2022/03/23/audio_5a1b5f7c0a.mp3?filename=happy-upbeat-ambient-11259.mp3" preload="auto"></audio>
+<audio id="jumpSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3" preload="auto"></audio>
+<audio id="hitSound" src="https://freesound.org/data/previews/198/198841_285997-lq.mp3" preload="auto"></audio>
+
 <script>
-  // Автор может заменить картинки на свои милые Лабубу (только в коде)
   const characters = [
     { name: 'Лабубу Розовый', img: 'лплплл-Photoroom.png' },
     { name: 'Лабубу Голубой', img: 'гол-Photoroom.png' },
@@ -101,6 +120,10 @@
   const monster = document.getElementById('monster');
   const scoreDisplay = document.getElementById('score');
   const restartBtn = document.getElementById('restartBtn');
+  const bgMusic = document.getElementById('bgMusic');
+  const jumpSound = document.getElementById('jumpSound');
+  const hitSound = document.getElementById('hitSound');
+  const musicControl = document.getElementById('musicControl');
 
   let selectedCharacterIndex = null;
   let gameInterval = null;
@@ -117,11 +140,14 @@
   let monsterLeft = -70;
   const monsterSpeed = 2;
   let gameOver = false;
+  let playerLeft = 50;
+  const playerRunSpeed = 3;
 
-  // Создаем выбор персонажа
+  // Инициализация выбора персонажа
   characters.forEach((char, i) => {
     const div = document.createElement('div');
     div.className = 'charCard';
+    div.setAttribute('role', 'listitem');
     div.innerHTML = `<img src="${char.img}" alt="${char.name}"><div>${char.name}</div>`;
     div.onclick = () => {
       if (gameOver) return;
@@ -141,16 +167,23 @@
     gameOver = false;
     scoreDisplay.textContent = 'Счёт: 0';
     player.style.backgroundImage = `url('${characters[selectedCharacterIndex].img}')`;
+    playerBottom = 50;
+    playerLeft = 50;
     player.style.bottom = playerBottom + 'px';
-    player.style.left = '50px';
+    player.style.left = playerLeft + 'px';
     monsterLeft = -70;
     monster.style.left = monsterLeft + 'px';
     clearObstacles();
     obstacles = [];
 
+    if (!bgMusic.paused) {
+      bgMusic.currentTime = 0;
+    } else {
+      bgMusic.play().catch(() => {});
+    }
+
     gameInterval = setInterval(gameLoop, 20);
 
-    // Запускаем создание препятствий с задержкой 5 секунд
     if (obstacleStartTimeout) clearTimeout(obstacleStartTimeout);
     if (obstacleInterval) clearInterval(obstacleInterval);
     obstacleStartTimeout = setTimeout(() => {
@@ -177,9 +210,17 @@
   function gameLoop() {
     if (gameOver) return;
 
+    // Движение персонажа слева направо
+    playerLeft += playerRunSpeed;
+    if (playerLeft > 540) playerLeft = 50; // сброс позиции
+    player.style.left = playerLeft + 'px';
+
+    // Движение монстра слева направо с циклом
     monsterLeft += monsterSpeed;
+    if (monsterLeft > 600) monsterLeft = -70;
     monster.style.left = monsterLeft + 'px';
 
+    // Движение препятствий слева направо (остаются справа)
     obstacles.forEach((ob, i) => {
       ob.left -= 5;
       if (ob.left < -40) {
@@ -192,13 +233,13 @@
       }
     });
 
+    // Проверка столкновений
     for (const ob of obstacles) {
       if (isCollision(player, ob.element)) {
         endGame();
         return;
       }
     }
-
     if (isCollision(player, monster)) {
       endGame();
       return;
@@ -208,7 +249,6 @@
   function isCollision(el1, el2) {
     const r1 = el1.getBoundingClientRect();
     const r2 = el2.getBoundingClientRect();
-
     return !(
       r1.top > r2.bottom ||
       r1.bottom < r2.top ||
@@ -220,6 +260,8 @@
   function jump() {
     if (isJumping || gameOver) return;
     isJumping = true;
+    jumpSound.currentTime = 0;
+    jumpSound.play().catch(() => {});
     let upCount = 0;
 
     jumpUpInterval = setInterval(() => {
@@ -253,6 +295,9 @@
     clearInterval(gameInterval);
     clearInterval(obstacleInterval);
     if (obstacleStartTimeout) clearTimeout(obstacleStartTimeout);
+    hitSound.currentTime = 0;
+    hitSound.play().catch(() => {});
+    bgMusic.pause();
     alert('Игра окончена! Ваш счёт: ' + score);
     restartBtn.style.display = 'block';
   }
@@ -273,6 +318,35 @@
   gameContainer.onclick = () => {
     jump();
   };
+
+  // Управление музыкой
+  let musicPlaying = true;
+  musicControl.onclick = toggleMusic;
+  musicControl.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleMusic();
+    }
+  };
+
+  function toggleMusic() {
+    if (musicPlaying) {
+      bgMusic.pause();
+      musicControl.setAttribute('aria-pressed', 'false');
+      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4.5V5H6v14zm7-14v14h4.5V5H13z"/></svg>`; // иконка паузы
+    } else {
+      bgMusic.play().catch(() => {});
+      musicControl.setAttribute('aria-pressed', 'true');
+      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>`; // иконка звука
+    }
+    musicPlaying = !musicPlaying;
+  }
+
+  // Автостарт музыки (если разрешено)
+  window.addEventListener('load', () => {
+    bgMusic.volume = 0.3;
+    bgMusic.play().catch(() => {});
+  });
 </script>
 
 </body>

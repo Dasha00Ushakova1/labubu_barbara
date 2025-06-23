@@ -6,7 +6,6 @@
 <title>Игра Лабубу</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
-  <link rel="icon" href="л-round.png" sizes="32x32" type="image/x-icon">
   body {
     margin: 0; padding: 0; background: #fff0f6; font-family: 'Comic Neue', cursive, sans-serif;
     user-select: none; color: #6b4c4c;
@@ -49,10 +48,10 @@
     transition: bottom 0.1s ease-out;
   }
   #player {
-    width: 60px; height: 120px; /* увеличим высоту для прыжка */
+    width: 60px; height: 120px;
   }
   #monster {
-    background-image: url('https://i.imgur.com/2z5Jq6Y.png');
+    background-image: url('монстр-Photoroom.png');
     width: 70px; height: 70px; bottom: 50px;
     transition: left 0.05s linear;
   }
@@ -60,7 +59,7 @@
     width: 40px; height: 50px; background: #f06595; border-radius: 15px;
     box-shadow: 0 2px 5px #d46a6a;
   }
-  #score {
+  #score, #level {
     text-align: center; font-size: 22px; margin-top: 15px; color: #d46a6a;
     text-shadow: 1px 1px 1px #fff;
   }
@@ -97,6 +96,7 @@
   <div id="monster" aria-label="Монстр Лабубу"></div>
 </div>
 <div id="score" aria-live="polite">Счёт: 0</div>
+<div id="level" aria-live="polite">Уровень: 1</div>
 <div id="instructions">Нажмите пробел или кликните, чтобы Лабубу прыгнул</div>
 <button id="restartBtn" aria-label="Начать игру заново">Начать заново</button>
 
@@ -120,6 +120,7 @@
   const player = document.getElementById('player');
   const monster = document.getElementById('monster');
   const scoreDisplay = document.getElementById('score');
+  const levelDisplay = document.getElementById('level');
   const restartBtn = document.getElementById('restartBtn');
   const bgMusic = document.getElementById('bgMusic');
   const jumpSound = document.getElementById('jumpSound');
@@ -139,10 +140,17 @@
   let jumpUpInterval = null;
   let jumpDownInterval = null;
   let monsterLeft = -70;
-  const monsterSpeed = 2;
+  let monsterSpeed = 2;
   let gameOver = false;
   let playerLeft = 50;
-  const playerRunSpeed = 3;
+  let playerRunSpeed = 3;
+
+  let level = 1;
+  const levelUpScore = 10; // очков для повышения уровня
+  const maxLevel = 5;
+
+  // Загрузка рекорда из localStorage
+  let bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
 
   // Инициализация выбора персонажа
   characters.forEach((char, i) => {
@@ -165,14 +173,17 @@
     gameContainer.style.display = 'block';
     restartBtn.style.display = 'none';
     score = 0;
+    level = 1;
+    updateScore();
+    updateLevel();
     gameOver = false;
-    scoreDisplay.textContent = 'Счёт: 0';
     player.style.backgroundImage = `url('${characters[selectedCharacterIndex].img}')`;
     playerBottom = 50;
     playerLeft = 50;
     player.style.bottom = playerBottom + 'px';
     player.style.left = playerLeft + 'px';
     monsterLeft = -70;
+    monsterSpeed = 2;
     monster.style.left = monsterLeft + 'px';
     clearObstacles();
     obstacles = [];
@@ -189,14 +200,19 @@
     if (obstacleInterval) clearInterval(obstacleInterval);
     obstacleStartTimeout = setTimeout(() => {
       if (!gameOver) {
-        obstacleInterval = setInterval(createObstacle, 2200);
+        obstacleInterval = setInterval(createObstacle, getObstacleInterval());
       }
-    }, 5000);
+    }, 3000);
   }
 
   function clearObstacles() {
     obstacles.forEach(ob => gameContainer.removeChild(ob.element));
     obstacles = [];
+  }
+
+  function getObstacleInterval() {
+    // Интервал между препятствиями уменьшается с уровнем
+    return Math.max(1200 - (level - 1) * 200, 600);
   }
 
   function createObstacle() {
@@ -213,7 +229,7 @@
 
     // Движение персонажа слева направо
     playerLeft += playerRunSpeed;
-    if (playerLeft > 540) playerLeft = 50; // сброс позиции
+    if (playerLeft > 540) playerLeft = 50;
     player.style.left = playerLeft + 'px';
 
     // Движение монстра слева направо с циклом
@@ -221,14 +237,15 @@
     if (monsterLeft > 600) monsterLeft = -70;
     monster.style.left = monsterLeft + 'px';
 
-    // Движение препятствий слева направо (остаются справа)
+    // Движение препятствий справа налево
     obstacles.forEach((ob, i) => {
-      ob.left -= 5;
+      ob.left -= 5 + level - 1; // скорость растёт с уровнем
       if (ob.left < -40) {
         gameContainer.removeChild(ob.element);
         obstacles.splice(i, 1);
         score++;
-        scoreDisplay.textContent = 'Счёт: ' + score;
+        updateScore();
+        checkLevelUp();
       } else {
         ob.element.style.left = ob.left + 'px';
       }
@@ -244,6 +261,27 @@
     if (isCollision(player, monster)) {
       endGame();
       return;
+    }
+  }
+
+  function updateScore() {
+    scoreDisplay.textContent = `Счёт: ${score} (Рекорд: ${bestScore})`;
+  }
+
+  function updateLevel() {
+    levelDisplay.textContent = `Уровень: ${level}`;
+  }
+
+  function checkLevelUp() {
+    if (level < maxLevel && score >= level * levelUpScore) {
+      level++;
+      updateLevel();
+      // Увеличиваем скорость монстра и игрока
+      monsterSpeed += 0.5;
+      playerRunSpeed += 0.5;
+      // Перезапускаем интервал препятствий с новой скоростью
+      if (obstacleInterval) clearInterval(obstacleInterval);
+      obstacleInterval = setInterval(createObstacle, getObstacleInterval());
     }
   }
 
@@ -299,7 +337,14 @@
     hitSound.currentTime = 0;
     hitSound.play().catch(() => {});
     bgMusic.pause();
-    alert('Игра окончена! Ваш счёт: ' + score);
+
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('bestScore', bestScore);
+      alert(`Игра окончена! Ваш новый рекорд: ${score}`);
+    } else {
+      alert(`Игра окончена! Ваш счёт: ${score}`);
+    }
     restartBtn.style.display = 'block';
   }
 
@@ -334,16 +379,15 @@
     if (musicPlaying) {
       bgMusic.pause();
       musicControl.setAttribute('aria-pressed', 'false');
-      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4.5V5H6v14zm7-14v14h4.5V5H13z"/></svg>`; // иконка паузы
+      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4.5V5H6v14zm7-14v14h4.5V5H13z"/></svg>`;
     } else {
       bgMusic.play().catch(() => {});
       musicControl.setAttribute('aria-pressed', 'true');
-      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>`; // иконка звука
+      musicControl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>`;
     }
     musicPlaying = !musicPlaying;
   }
 
-  // Автостарт музыки (если разрешено)
   window.addEventListener('load', () => {
     bgMusic.volume = 0.3;
     bgMusic.play().catch(() => {});

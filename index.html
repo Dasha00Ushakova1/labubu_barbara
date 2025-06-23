@@ -424,6 +424,46 @@
     bgMusic.play().catch(() => {});
   });
 </script>
+   <!-- Внутри <script> замените функцию gameLoop на эту версию -->
+<script>
+  // ... остальной код без изменений ...
+
+  function gameLoop() {
+    if (gameOver) return;
+
+    // Убираем автоматическое движение игрока, он остается на месте слева
+    playerLeft = 50; // фиксированная позиция слева
+    player.style.left = playerLeft + 'px';
+
+    monsterLeft += monsterSpeed;
+    if (monsterLeft > 600) monsterLeft = -70;
+    monster.style.left = monsterLeft + 'px';
+
+    obstacles.forEach((ob, i) => {
+      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
+      if (ob.left < -40) {
+        gameContainer.removeChild(ob.element);
+        obstacles.splice(i, 1);
+        score++;
+        updateScore();
+        checkLevelUp();
+      } else {
+        ob.element.style.left = ob.left + 'px';
+      }
+    });
+
+    for (const ob of obstacles) {
+      if (isCollision(player, ob.element)) {
+        endGame();
+        return;
+      }
+    }
+    if (isCollision(player, monster)) {
+      endGame();
+      return;
+    }
+  }
+</script>
 
 </body>
 </html>

@@ -151,6 +151,10 @@
   const levelUpScore = 10; // очков для повышения уровня
   const maxLevel = 5;
 
+  // Для ускорения (интересная функция)
+  let speedBoostActive = false;
+  let speedBoostTimeout = null;
+
   // Загрузка рекорда из localStorage
   let bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
 
@@ -176,6 +180,8 @@
     restartBtn.style.display = 'none';
     score = 0;
     level = 1;
+    speedBoostActive = false;
+    clearTimeout(speedBoostTimeout);
     updateScore();
     updateLevel();
     gameOver = false;
@@ -186,6 +192,7 @@
     player.style.left = playerLeft + 'px';
     monsterLeft = -70;
     monsterSpeed = 2;
+    playerRunSpeed = 3;
     monster.style.left = monsterLeft + 'px';
     clearObstacles();
     obstacles = [];
@@ -213,7 +220,6 @@
   }
 
   function getObstacleInterval() {
-    // Интервал между препятствиями уменьшается с уровнем
     return Math.max(1200 - (level - 1) * 200, 600);
   }
 
@@ -229,19 +235,16 @@
   function gameLoop() {
     if (gameOver) return;
 
-    // Движение персонажа слева направо
     playerLeft += playerRunSpeed;
     if (playerLeft > 540) playerLeft = 50;
     player.style.left = playerLeft + 'px';
 
-    // Движение монстра слева направо с циклом
     monsterLeft += monsterSpeed;
     if (monsterLeft > 600) monsterLeft = -70;
     monster.style.left = monsterLeft + 'px';
 
-    // Движение препятствий справа налево
     obstacles.forEach((ob, i) => {
-      ob.left -= 5 + level - 1; // скорость растёт с уровнем
+      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
       if (ob.left < -40) {
         gameContainer.removeChild(ob.element);
         obstacles.splice(i, 1);
@@ -253,7 +256,6 @@
       }
     });
 
-    // Проверка столкновений
     for (const ob of obstacles) {
       if (isCollision(player, ob.element)) {
         endGame();
@@ -278,13 +280,38 @@
     if (level < maxLevel && score >= level * levelUpScore) {
       level++;
       updateLevel();
-      // Увеличиваем скорость монстра и игрока
       monsterSpeed += 0.5;
       playerRunSpeed += 0.5;
-      // Перезапускаем интервал препятствий с новой скоростью
       if (obstacleInterval) clearInterval(obstacleInterval);
       obstacleInterval = setInterval(createObstacle, getObstacleInterval());
+
+      // Интересная функция: ускорение на 5 секунд с 3-го уровня
+      if (level === 3 && !speedBoostActive) {
+        activateSpeedBoost();
+      }
     }
+  }
+
+  function activateSpeedBoost() {
+    speedBoostActive = true;
+    monsterSpeed += 2;
+    playerRunSpeed += 2;
+    updateInstructions('Ускорение активировано! Внимание!');
+
+    speedBoostTimeout = setTimeout(() => {
+      speedBoostActive = false;
+      monsterSpeed -= 2;
+      playerRunSpeed -= 2;
+      updateInstructions('Ускорение закончилось.');
+    }, 5000);
+  }
+
+  function updateInstructions(text) {
+    const instr = document.getElementById('instructions');
+    instr.textContent = text;
+    setTimeout(() => {
+      if (!gameOver) instr.textContent = 'Нажмите пробел или кликните, чтобы Лабубу прыгнул';
+    }, 4000);
   }
 
   function isCollision(el1, el2) {
@@ -335,7 +362,9 @@
     gameOver = true;
     clearInterval(gameInterval);
     clearInterval(obstacleInterval);
-    if (obstacleStartTimeout) clearTimeout(obstacleStartTimeout);
+    clearTimeout(obstacleStartTimeout);
+    clearTimeout(speedBoostTimeout);
+    speedBoostActive = false;
     hitSound.currentTime = 0;
     hitSound.play().catch(() => {});
     bgMusic.pause();
@@ -355,6 +384,7 @@
     gameContainer.style.display = 'none';
     restartBtn.style.display = 'none';
     document.querySelectorAll('.charCard').forEach(c => c.classList.remove('selected'));
+    updateInstructions('Нажмите пробел или кликните, чтобы Лабубу прыгнул');
   };
 
   document.body.onkeydown = e => {
@@ -367,7 +397,6 @@
     jump();
   };
 
-  // Управление музыкой
   let musicPlaying = true;
   musicControl.onclick = toggleMusic;
   musicControl.onkeydown = e => {

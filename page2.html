@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="л-round.png" sizes="32x32" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400&display=swap" rel="stylesheet">
 <title>Игра Лабубу</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
@@ -145,7 +147,6 @@
   let monsterSpeed = 1.2;
   let gameOver = false;
   let playerLeft = 50;
-  let playerRunSpeed = 0;
 
   let level = 1;
   const levelUpScore = 10;
@@ -192,7 +193,6 @@
     player.style.left = playerLeft + 'px';
     monsterLeft = 0;
     monsterSpeed = 1.2;
-    playerRunSpeed = 0;
     monster.style.left = monsterLeft + 'px';
     clearObstacles();
     obstacles = [];
@@ -232,10 +232,11 @@
     gameContainer.appendChild(obstacle);
     obstacles.push({ element: obstacle, left: 600 });
   }
+
   function gameLoop() {
     if (gameOver) return;
 
-    playerLeft = 50;
+    // playerLeft фиксировать не нужно, чтобы прыжок работал корректно
     player.style.left = playerLeft + 'px';
 
     monsterLeft += monsterSpeed;
@@ -270,7 +271,7 @@
   }
 
   function endGame() {
-    if (gameOver) return; // Предотвращаем повторный вызов
+    if (gameOver) return;
     gameOver = true;
     console.log('Игра окончена');
     clearInterval(gameInterval);
@@ -290,35 +291,6 @@
       alert(`Игра окончена! Ваш счёт: ${score}`);
     }
     restartBtn.style.display = 'block';
-  }
-
-  // Убедитесь, что startGame вызывается только после выбора персонажа
-  // В начале selectedCharacterIndex = null, игра не запускается
-
-  // ... остальной код без изменений ...
-    obstacles.forEach((ob, i) => {
-      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
-      if (ob.left < -40) {
-        gameContainer.removeChild(ob.element);
-        obstacles.splice(i, 1);
-        score++;
-        updateScore();
-        checkLevelUp();
-      } else {
-        ob.element.style.left = ob.left + 'px';
-      }
-    });
-
-    for (const ob of obstacles) {
-      if (isCollision(player, ob.element)) {
-        endGame();
-        return;
-      }
-    }
-    if (isCollision(player, monster)) {
-      endGame();
-      return;
-    }
   }
 
   function updateScore() {
@@ -407,33 +379,28 @@
     }, 20);
   }
 
-  function endGame() {
-    gameOver = true;
-    clearInterval(gameInterval);
-    clearInterval(obstacleInterval);
-    clearTimeout(obstacleStartTimeout);
-    clearTimeout(speedBoostTimeout);
-    speedBoostActive = false;
-    hitSound.currentTime = 0;
-    hitSound.play().catch(() => {});
-    bgMusic.pause();
-
-    if (score > bestScore) {
-      bestScore = score;
-      localStorage.setItem('bestScore', bestScore);
-      alert(`Игра окончена! Ваш новый рекорд: ${score}`);
-    } else {
-      alert(`Игра окончена! Ваш счёт: ${score}`);
-    }
-    restartBtn.style.display = 'block';
-  }
-
   restartBtn.onclick = () => {
     characterSelect.style.display = 'flex';
     gameContainer.style.display = 'none';
     restartBtn.style.display = 'none';
     document.querySelectorAll('.charCard').forEach(c => c.classList.remove('selected'));
     updateInstructions('Нажмите пробел или кликните, чтобы Лабубу прыгнул');
+    selectedCharacterIndex = null;
+    clearInterval(gameInterval);
+    clearInterval(obstacleInterval);
+    clearTimeout(obstacleStartTimeout);
+    clearTimeout(speedBoostTimeout);
+    obstacles.forEach(ob => {
+      if (ob.element.parentNode) ob.element.parentNode.removeChild(ob.element);
+    });
+    obstacles = [];
+    score = 0;
+    updateScore();
+    level = 1;
+    updateLevel();
+    gameOver = false;
+    playerBottom = 50;
+    player.style.bottom = playerBottom + 'px';
   };
 
   document.body.onkeydown = e => {

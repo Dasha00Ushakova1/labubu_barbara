@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-   <link rel="icon" href="л-round.png" sizes="32x32" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400&display=swap" rel="stylesheet">
 <title>Игра Лабубу</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
@@ -69,7 +67,7 @@
     text-align: center; margin-top: 10px; color: #a64b4b; font-size: 16px;
   }
   #restartBtn {
-    display: block; margin: 20px auto; padding: 12px 28px; font-size: 18px;
+    display: none; margin: 20px auto; padding: 12px 28px; font-size: 18px;
     border: none; background: #f06595; color: white; border-radius: 25px;
     cursor: pointer; box-shadow: 0 4px 10px #d46a6a;
     transition: background 0.3s;
@@ -111,6 +109,8 @@
 <audio id="hitSound" src="https://freesound.org/data/previews/198/198841_285997-lq.mp3" preload="auto"></audio>
 
 <script>
+  console.log('Скрипт загружен');
+
   const characters = [
     { name: 'Лабубу Розовый', img: 'лплплл-Photoroom.png' },
     { name: 'Лабубу Голубой', img: 'гол-Photoroom.png' },
@@ -142,13 +142,13 @@
   let jumpUpInterval = null;
   let jumpDownInterval = null;
   let monsterLeft = 0;
-  let monsterSpeed = 1.2; // медленнее на первом уровне
+  let monsterSpeed = 1.2;
   let gameOver = false;
   let playerLeft = 50;
-  let playerRunSpeed = 0; // игрок не двигается автоматически
+  let playerRunSpeed = 0;
 
   let level = 1;
-  const levelUpScore = 10; // очков для повышения уровня
+  const levelUpScore = 10;
   const maxLevel = 5;
 
   let speedBoostActive = false;
@@ -156,6 +156,7 @@
 
   let bestScore = parseInt(localStorage.getItem('bestScore')) || 0;
 
+  // Создаём выбор персонажа
   characters.forEach((char, i) => {
     const div = document.createElement('div');
     div.className = 'charCard';
@@ -163,6 +164,7 @@
     div.innerHTML = `<img src="${char.img}" alt="${char.name}"><div>${char.name}</div>`;
     div.onclick = () => {
       if (gameOver) return;
+      console.log(`Выбран персонаж: ${char.name}`);
       document.querySelectorAll('.charCard').forEach(c => c.classList.remove('selected'));
       div.classList.add('selected');
       selectedCharacterIndex = i;
@@ -172,6 +174,7 @@
   });
 
   function startGame() {
+    console.log('Старт игры');
     characterSelect.style.display = 'none';
     gameContainer.style.display = 'block';
     restartBtn.style.display = 'none';
@@ -187,9 +190,9 @@
     playerLeft = 50;
     player.style.bottom = playerBottom + 'px';
     player.style.left = playerLeft + 'px';
-    monsterLeft = 0; // старт слева от игрока
-    monsterSpeed = 1.2; // медленнее на первом уровне
-    playerRunSpeed = 0; // игрок не двигается
+    monsterLeft = 0;
+    monsterSpeed = 1.2;
+    playerRunSpeed = 0;
     monster.style.left = monsterLeft + 'px';
     clearObstacles();
     obstacles = [];
@@ -218,7 +221,7 @@
   }
 
   function getObstacleInterval() {
-    return Math.max(1400 - (level - 1) * 200, 600); // на первом уровне реже препятствия
+    return Math.max(1400 - (level - 1) * 200, 600);
   }
 
   function createObstacle() {
@@ -233,11 +236,9 @@
   function gameLoop() {
     if (gameOver) return;
 
-    // Игрок фиксирован слева
     playerLeft = 50;
     player.style.left = playerLeft + 'px';
 
-    // Монстр не может быть правее игрока - ограничим max позицию монстра
     monsterLeft += monsterSpeed;
     if (monsterLeft > playerLeft - monster.offsetWidth) {
       monsterLeft = playerLeft - monster.offsetWidth;
@@ -283,7 +284,6 @@
       level++;
       updateLevel();
       monsterSpeed += 0.5;
-      playerRunSpeed += 0; // игрок не двигается
       if (obstacleInterval) clearInterval(obstacleInterval);
       obstacleInterval = setInterval(createObstacle, getObstacleInterval());
 
@@ -296,13 +296,11 @@
   function activateSpeedBoost() {
     speedBoostActive = true;
     monsterSpeed += 2;
-    playerRunSpeed += 0;
     updateInstructions('Ускорение активировано! Внимание!');
 
     speedBoostTimeout = setTimeout(() => {
       speedBoostActive = false;
       monsterSpeed -= 2;
-      playerRunSpeed -= 0;
       updateInstructions('Ускорение закончилось.');
     }, 5000);
   }

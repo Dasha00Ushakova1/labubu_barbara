@@ -56,6 +56,7 @@
     background-image: url('монстр-Photoroom.png');
     width: 70px; height: 70px; bottom: 50px;
     transition: left 0.05s linear;
+    display: none; /* Изначально скрыт, показываем при старте */
   }
   .obstacle {
     width: 40px; height: 50px; background: #f06595; border-radius: 15px;
@@ -194,6 +195,7 @@
     monsterLeft = 0;
     monsterSpeed = 1.2;
     monster.style.left = monsterLeft + 'px';
+    monster.style.display = 'block'; // Обеспечить видимость монстра
     clearObstacles();
     obstacles = [];
 
@@ -209,14 +211,20 @@
     if (obstacleStartTimeout) clearTimeout(obstacleStartTimeout);
     if (obstacleInterval) clearInterval(obstacleInterval);
     obstacleStartTimeout = setTimeout(() => {
+      console.log('Запуск создания препятствий');
       if (!gameOver) {
-        obstacleInterval = setInterval(createObstacle, getObstacleInterval());
+        obstacleInterval = setInterval(() => {
+          console.log('Создаём препятствие');
+          createObstacle();
+        }, getObstacleInterval());
       }
     }, 3000);
   }
 
   function clearObstacles() {
-    obstacles.forEach(ob => gameContainer.removeChild(ob.element));
+    obstacles.forEach(ob => {
+      if (ob.element.parentNode) ob.element.parentNode.removeChild(ob.element);
+    });
     obstacles = [];
   }
 
@@ -236,7 +244,6 @@
   function gameLoop() {
     if (gameOver) return;
 
-    // playerLeft фиксировать не нужно, чтобы прыжок работал корректно
     player.style.left = playerLeft + 'px';
 
     monsterLeft += monsterSpeed;
@@ -246,7 +253,7 @@
     obstacles.forEach((ob, i) => {
       ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
       if (ob.left < -40) {
-        gameContainer.removeChild(ob.element);
+        if (ob.element.parentNode) gameContainer.removeChild(ob.element);
         obstacles.splice(i, 1);
         score++;
         updateScore();
@@ -255,6 +262,9 @@
         ob.element.style.left = ob.left + 'px';
       }
     });
+
+    // Лог для отладки
+    // console.log(`Монстр слева: ${monsterLeft}, препятствий: ${obstacles.length}`);
 
     for (const ob of obstacles) {
       if (isCollision(player, ob.element)) {
@@ -401,6 +411,7 @@
     gameOver = false;
     playerBottom = 50;
     player.style.bottom = playerBottom + 'px';
+    monster.style.display = 'none'; // Скрыть монстра при рестарте
   };
 
   document.body.onkeydown = e => {

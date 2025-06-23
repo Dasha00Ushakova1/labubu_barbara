@@ -56,7 +56,7 @@
     background-image: url('монстр-Photoroom.png');
     width: 70px; height: 70px; bottom: 50px;
     transition: left 0.05s linear;
-    display: none; /* Изначально скрыт, показываем при старте */
+    /* Убираем display:none, чтобы монстр был виден сразу */
   }
   .obstacle {
     width: 40px; height: 50px; background: #f06595; border-radius: 15px;
@@ -263,9 +263,6 @@
       }
     });
 
-    // Лог для отладки
-    // console.log(`Монстр слева: ${monsterLeft}, препятствий: ${obstacles.length}`);
-
     for (const ob of obstacles) {
       if (isCollision(player, ob.element)) {
         console.log('Столкновение с препятствием');
@@ -411,7 +408,8 @@
     gameOver = false;
     playerBottom = 50;
     player.style.bottom = playerBottom + 'px';
-    monster.style.display = 'none'; // Скрыть монстра при рестарте
+    // Не скрываем монстра при рестарте, чтобы он был виден
+    monster.style.display = 'block';
   };
 
   document.body.onkeydown = e => {

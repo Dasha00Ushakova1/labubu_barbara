@@ -232,7 +232,6 @@
     gameContainer.appendChild(obstacle);
     obstacles.push({ element: obstacle, left: 600 });
   }
-
   function gameLoop() {
     if (gameOver) return;
 
@@ -240,12 +239,63 @@
     player.style.left = playerLeft + 'px';
 
     monsterLeft += monsterSpeed;
-    if (monsterLeft > playerLeft - monster.offsetWidth) {
-      monsterLeft = playerLeft - monster.offsetWidth;
-    }
     if (monsterLeft > 600) monsterLeft = -70;
     monster.style.left = monsterLeft + 'px';
 
+    obstacles.forEach((ob, i) => {
+      ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
+      if (ob.left < -40) {
+        gameContainer.removeChild(ob.element);
+        obstacles.splice(i, 1);
+        score++;
+        updateScore();
+        checkLevelUp();
+      } else {
+        ob.element.style.left = ob.left + 'px';
+      }
+    });
+
+    for (const ob of obstacles) {
+      if (isCollision(player, ob.element)) {
+        console.log('Столкновение с препятствием');
+        endGame();
+        return;
+      }
+    }
+    if (isCollision(player, monster)) {
+      console.log('Столкновение с монстром');
+      endGame();
+      return;
+    }
+  }
+
+  function endGame() {
+    if (gameOver) return; // Предотвращаем повторный вызов
+    gameOver = true;
+    console.log('Игра окончена');
+    clearInterval(gameInterval);
+    clearInterval(obstacleInterval);
+    clearTimeout(obstacleStartTimeout);
+    clearTimeout(speedBoostTimeout);
+    speedBoostActive = false;
+    hitSound.currentTime = 0;
+    hitSound.play().catch(() => {});
+    bgMusic.pause();
+
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('bestScore', bestScore);
+      alert(`Игра окончена! Ваш новый рекорд: ${score}`);
+    } else {
+      alert(`Игра окончена! Ваш счёт: ${score}`);
+    }
+    restartBtn.style.display = 'block';
+  }
+
+  // Убедитесь, что startGame вызывается только после выбора персонажа
+  // В начале selectedCharacterIndex = null, игра не запускается
+
+  // ... остальной код без изменений ...
     obstacles.forEach((ob, i) => {
       ob.left -= 5 + level - 1 + (speedBoostActive ? 3 : 0);
       if (ob.left < -40) {
